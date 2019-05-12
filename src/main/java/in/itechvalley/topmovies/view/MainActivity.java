@@ -1,41 +1,40 @@
 package in.itechvalley.topmovies.view;
 
 import android.os.Bundle;
-import android.util.Log;
+import android.text.TextUtils;
 import android.view.View;
+import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.snackbar.Snackbar;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.util.List;
-import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import in.itechvalley.topmovies.R;
 import in.itechvalley.topmovies.model.SingleMovieModel;
-import in.itechvalley.topmovies.model.TopMoviesModel;
-import in.itechvalley.topmovies.network.TopMoviesApiService;
-import in.itechvalley.topmovies.utils.Constants;
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import in.itechvalley.topmovies.viewmodel.TopMoviesViewModel;
 
-public class MainActivity extends AppCompatActivity
+public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener
 {
     /*
-    * LOG
-    * */
+     * LOG
+     * */
     private static final String TAG = "MainActivity";
 
     @BindView(android.R.id.content)
     View currentView;
+
+    @BindView(R.id.swipe_refresh_activity_main)
+    SwipeRefreshLayout swipeRefreshLayout;
+
+    /*
+     * Instance of ViewModel
+     * */
+    private TopMoviesViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -44,67 +43,68 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         /*
-        * Attach ButterKnife to current Activity
-        * */
+         * Attach ButterKnife to current Activity
+         * */
         ButterKnife.bind(this);
 
         /*
-        * HttpLoggingInterceptor to print the response in Logcat
-        * */
-        HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor();
-        httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+         * Attach onRefresh(...) to SwipeRefreshLayout
+         * */
+        swipeRefreshLayout.setOnRefreshListener(this);
 
         /*
-        * OkHttpClient
+         * Init the Global Instance of ViewModel
+         * */
+        viewModel = ViewModelProviders.of(this).get(TopMoviesViewModel.class);
+        /*
+         * Attemp to get movies list from API
+         * */
+        viewModel.requestMovieList();
+        /*
+        * Trigger swipeRefreshLayout
         * */
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(httpLoggingInterceptor)
-                .build();
+        swipeRefreshLayout.setRefreshing(true);
+    }
 
-        /*
-        * Retrofit's Builder
-        * */
-        Retrofit.Builder retrofitBuilder = new Retrofit.Builder()
-                .baseUrl(Constants.Urls.BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(okHttpClient);
+    @Override
+    protected void onStart()
+    {
+        super.onStart();
 
-        /*
-        * Get Instance of Retrofit from it's Builder
-        * */
-        Retrofit retrofit = retrofitBuilder.build();
-
-        /*
-        * Create the Instance of TopMoviesApiService
-        * */
-        TopMoviesApiService apiService = retrofit.create(TopMoviesApiService.class);
-        /*
-        * Make a call to API
-        * */
-        apiService.getAllMovies().enqueue(new Callback<TopMoviesModel>()
+        viewModel.getMoviesListObserver().observe(this, new Observer<List<SingleMovieModel>>()
         {
             @Override
-            public void onResponse(@NonNull Call<TopMoviesModel> call, @NonNull Response<TopMoviesModel> response)
+            public void onChanged(List<SingleMovieModel> singleMovieModels)
             {
-                TopMoviesModel responseBody = response.body();
-                if (responseBody == null)
+                if (singleMovieModels != null)
                 {
-                    return;
+                    Toast.makeText(MainActivity.this, "Size is " + singleMovieModels.size(), Toast.LENGTH_SHORT).show();
                 }
-
-                List<SingleMovieModel> moviesList = responseBody.getMoviesList();
-                Snackbar.make(
-                        currentView,
-                        String.format(Locale.ENGLISH,"Total Movies: %d", moviesList.size()),
-                        Snackbar.LENGTH_INDEFINITE
-                ).show();
-            }
-
-            @Override
-            public void onFailure(@NonNull Call<TopMoviesModel> call, @NonNull Throwable throwable)
-            {
-                Log.e(TAG, "Failed to load Movies", throwable);
             }
         });
+
+        viewModel.getApiObserver().observe(this, message ->
+        {
+            if (!TextUtils.isEmpty(message))
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+
+            if (swipeRefreshLayout.isRefreshing())
+                swipeRefreshLayout.setRefreshing(false);
+        });
+    }
+
+    @Override
+    protected void onStop()
+    {
+        super.onStop();
+
+        viewModel.getMoviesListObserver().removeObservers(this);
+        viewModel.getApiObserver().removeObservers(this);
+    }
+
+    @Override
+    public void onRefresh()
+    {
+        viewModel.requestMovieList();
     }
 }

@@ -12,13 +12,17 @@ public class SingleMovieModel implements Serializable
     @SerializedName(value = "Genre", alternate = "genre")
     private String movieGenre;
 
+    @SerializedName(value = "Year", alternate = "year")
+    private String movieYear;
+
     /*
     * Constructor
     * */
-    public SingleMovieModel(String movieTitle, String movieGenre)
+    public SingleMovieModel(String movieTitle, String movieGenre, String movieYear)
     {
         this.movieTitle = movieTitle;
         this.movieGenre = movieGenre;
+        this.movieYear = movieYear;
     }
 
     /*
@@ -32,5 +36,10 @@ public class SingleMovieModel implements Serializable
     public String getMovieGenre()
     {
         return movieGenre;
+    }
+
+    public String getMovieYear()
+    {
+        return movieYear;
     }
 }
