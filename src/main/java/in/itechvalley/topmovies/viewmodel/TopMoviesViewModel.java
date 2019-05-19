@@ -1,24 +1,16 @@
 package in.itechvalley.topmovies.viewmodel;
 
 import android.app.Application;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.List;
 
+import in.itechvalley.topmovies.TopMoviesApp;
 import in.itechvalley.topmovies.model.SingleMovieModel;
-import in.itechvalley.topmovies.model.TopMoviesModel;
-import in.itechvalley.topmovies.network.RetrofitClient;
-import in.itechvalley.topmovies.network.TopMoviesApiService;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import in.itechvalley.topmovies.repo.TopMoviesRepo;
 
 public class TopMoviesViewModel extends AndroidViewModel
 {
@@ -28,14 +20,9 @@ public class TopMoviesViewModel extends AndroidViewModel
     private static final String TAG = "TopMoviesViewModel";
 
     /*
-    * MutalbleLiveData to observe List<SingleMovieModel>
+    * Inject the Dependency of TopMoviesRepo
     * */
-    private MutableLiveData<List<SingleMovieModel>> moviesListObserver = new MutableLiveData<>();
-
-    /*
-    * MutalbleLiveData to observe API Errors or Message
-    * */
-    private MutableLiveData<String> apiObserver = new MutableLiveData<>();
+    private TopMoviesRepo repo;
 
     /*
     * Constructor
@@ -43,64 +30,25 @@ public class TopMoviesViewModel extends AndroidViewModel
     public TopMoviesViewModel(@NonNull Application application)
     {
         super(application);
+
+        /*
+        * Inject the Dependency from Application class (TopMoviesApp)
+        * */
+        repo = ((TopMoviesApp) application).provideTopMoviesRepo();
     }
 
     public void requestMovieList()
     {
-        /*
-         * Create the Instance of TopMoviesApiService
-         * */
-        TopMoviesApiService apiService = new RetrofitClient()
-                .getRetrofit()
-                .create(TopMoviesApiService.class);
-        /*
-         * Make a call to API
-         * */
-        apiService.getAllMovies().enqueue(new Callback<TopMoviesModel>()
-        {
-            @Override
-            public void onResponse(@NonNull Call<TopMoviesModel> call, @NonNull Response<TopMoviesModel> response)
-            {
-                TopMoviesModel responseBody = response.body();
-                if (responseBody == null)
-                {
-                    apiObserver.postValue("Server returned null");
-                    return;
-                }
-
-                List<SingleMovieModel> moviesList = responseBody.getMoviesList();
-                moviesListObserver.postValue(moviesList);
-                apiObserver.postValue("");
-            }
-
-            @Override
-            public void onFailure(@NonNull Call<TopMoviesModel> call, @NonNull Throwable throwable)
-            {
-                Log.e(TAG, "Failed to load Movies", throwable);
-
-                if (throwable instanceof UnknownHostException)
-                {
-                    apiObserver.postValue("No Internet");
-                }
-                else if (throwable instanceof SocketTimeoutException)
-                {
-                    apiObserver.postValue("Socket Timeout");
-                }
-                else
-                {
-                    apiObserver.postValue(throwable.getMessage());
-                }
-            }
-        });
+        repo.getMovieData();
     }
 
     public LiveData<List<SingleMovieModel>> getMoviesListObserver()
     {
-        return moviesListObserver;
+        return repo.getDatabaseObserver();
     }
 
-    public LiveData<String> getApiObserver()
+    public LiveData<Integer> observeNetworkErrors()
     {
-        return apiObserver;
+        return repo.getNetworkErrorObserver();
     }
 }

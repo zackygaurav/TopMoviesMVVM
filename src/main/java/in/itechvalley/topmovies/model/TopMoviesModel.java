@@ -7,14 +7,22 @@ import java.util.List;
 
 public class TopMoviesModel implements Serializable
 {
+    @SerializedName("success")
+    private boolean success;
+
+    @SerializedName("message")
+    private String message;
+
     @SerializedName("movies")
     private List<SingleMovieModel> moviesList;
 
     /*
     * Constructor
     * */
-    public TopMoviesModel(List<SingleMovieModel> moviesList)
+    public TopMoviesModel(boolean success, String message, List<SingleMovieModel> moviesList)
     {
+        this.success = success;
+        this.message = message;
         this.moviesList = moviesList;
     }
 
@@ -24,5 +32,15 @@ public class TopMoviesModel implements Serializable
     public List<SingleMovieModel> getMoviesList()
     {
         return moviesList;
+    }
+
+    public boolean isSuccess()
+    {
+        return success;
+    }
+
+    public String getMessage()
+    {
+        return message;
     }
 }
